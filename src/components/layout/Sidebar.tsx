@@ -8,13 +8,15 @@ import {
   Star, 
   Clock, 
   Search, 
-  Settings, 
+  Book, 
+  Plus, 
   User, 
-  LogOut 
+  LogOut,
+  Settings 
 } from "lucide-react";
 import { auth } from "@/lib/firebase/config";
 import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import NotebookTree from "./NotebookTree";
 
 export default function Sidebar() {
@@ -36,11 +38,12 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-        <SidebarItem icon={<Home size={18} />} label="Home" href="/w" active />
+        <SidebarItem icon={<Home size={18} />} label="Home" href="/w" />
         <SidebarItem icon={<Book size={18} />} label="Notebooks" href="/w/notebooks" />
         <SidebarItem icon={<Star size={18} />} label="Favorites" href="/w/favorites" />
         <SidebarItem icon={<Clock size={18} />} label="Recent" href="/w/recent" />
         <SidebarItem icon={<Search size={18} />} label="Search" href="/w/search" />
+        <SidebarItem icon={<Settings size={18} />} label="Settings" href="/w/settings" />
 
         <NotebookTree />
       </nav>
@@ -64,20 +67,21 @@ function SidebarItem({
   icon, 
   label, 
   href, 
-  active,
-  indent 
+  indent = false 
 }: { 
   icon?: React.ReactNode; 
   label: string; 
   href: string; 
-  active?: boolean;
   indent?: boolean;
 }) {
+  const pathname = usePathname();
+  const isActive = pathname === href || pathname.startsWith(`${href}/`);
+
   return (
     <Link 
       href={href}
       className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-        active 
+        isActive 
           ? "bg-blue-600/10 text-blue-400" 
           : "hover:bg-slate-800/50 hover:text-slate-200"
       } ${indent ? "pl-9" : ""}`}

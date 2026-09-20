@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isWorkspaceHost(workspaceId) {
+      return isAuthenticated() && request.auth.uid == workspaceId;
+    }
+    
+    function isWorkspaceViewer(workspaceId) {
+      // Check if there is a document in workspaceMembers where ID is workspaceId_email
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/workspaceMembers/$(workspaceId + '_' + request.auth.token.email)) &&
+             get(/databases/$(database)/documents/workspaceMembers/$(workspaceId + '_' + request.auth.token.email)).data.role == 'VIEWER';
+    }
+    
+    function hasWorkspaceReadAccess(workspaceId) {
+      return isWorkspaceHost(workspaceId) || isWorkspaceViewer(workspaceId);
+    }
+    
+    function hasWorkspaceWriteAccess(workspaceId) {
+      return isWorkspaceHost(workspaceId);
+    }
+
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    match /workspaceMembers/{memberId} {
+      // Allow reading members if you have access to that workspace
+      allow read: if isAuthenticated(); 
+      // Only the Host can add/remove members for their workspace
+      allow create, update, delete: if isWorkspaceHost(request.resource.data.workspaceId) || isWorkspaceHost(resource.data.workspaceId);
+    }
+
+    match /notebooks/{docId} {
+      allow read: if isAuthenticated() && hasWorkspaceReadAccess(resource.data.workspaceId);
+      allow create: if isAuthenticated() && hasWorkspaceWriteAccess(request.resource.data.workspaceId);
+      allow update, delete: if isAuthenticated() && hasWorkspaceWriteAccess(resource.data.workspaceId);
+    }
+    
+    match /sections/{docId} {
+      allow read: if isAuthenticated() && hasWorkspaceReadAccess(resource.data.workspaceId);
+      allow create: if isAuthenticated() && hasWorkspaceWriteAccess(request.resource.data.workspaceId);
+      allow update, delete: if isAuthenticated() && hasWorkspaceWriteAccess(resource.data.workspaceId);
+    }
+    
+    match /pages/{docId} {
+      allow read: if isAuthenticated() && hasWorkspaceReadAccess(resource.data.workspaceId);
+      allow create: if isAuthenticated() && hasWorkspaceWriteAccess(request.resource.data.workspaceId);
+      allow update, delete: if isAuthenticated() && hasWorkspaceWriteAccess(resource.data.workspaceId);
+    }
+  }
+}

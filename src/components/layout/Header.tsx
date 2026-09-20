@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 
 export default function Header() {
   const { user } = useAuth();
-  const { notebooks, sections, pages } = useWorkspace();
+  const { notebooks, sections, pages, currentUserRole } = useWorkspace();
   const pathname = usePathname();
 
   // Parse URL: /w/n/[notebookId]/s/[sectionId]/p/[pageId]
@@ -30,6 +30,11 @@ export default function Header() {
             <span className="hover:text-slate-200 cursor-pointer transition-colors">{currentSection?.name || "..."}</span>
             <span className="mx-2">/</span>
             <span className="text-slate-200 font-medium">{currentPage?.title || "..."}</span>
+            {currentUserRole === 'VIEWER' && (
+              <span className="ml-4 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-slate-800 text-slate-400 uppercase">
+                Read Only
+              </span>
+            )}
           </>
         ) : (
           <span className="text-slate-200 font-medium">Workspace</span>
@@ -47,10 +52,12 @@ export default function Header() {
           <Share size={16} className="mr-2" />
           Share
         </button>
-        <button className="flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm shadow-blue-900/20">
-          <Zap size={16} className="mr-2" />
-          AI Process
-        </button>
+        {currentUserRole === 'HOST' && (
+          <button className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 rounded-md transition-colors text-sm font-medium">
+            <Zap size={14} />
+            <span>AI Process</span>
+          </button>
+        )}
         
         <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-medium ml-2">
           {user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}

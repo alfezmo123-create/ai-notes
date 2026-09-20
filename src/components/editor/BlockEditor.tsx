@@ -10,9 +10,11 @@ import { useEffect, useState } from 'react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/hooks/useAuth';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 
 export default function BlockEditor({ page }: { page: Page }) {
   const { user } = useAuth();
+  const { currentUserRole } = useWorkspace();
   const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Failed" | "">("Saved");
 
   // A very basic translation of our Block[] to TipTap HTML (in a real scenario, we'd use a custom extension or JSON format)
@@ -35,12 +37,14 @@ export default function BlockEditor({ page }: { page: Page }) {
       }),
     ],
     content: initialContent,
+    editable: currentUserRole === 'HOST',
     editorProps: {
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] prose-h1:text-4xl prose-h1:font-semibold prose-h1:tracking-tight prose-h1:mb-6 prose-p:text-slate-300 prose-p:leading-relaxed prose-headings:text-slate-200',
       },
     },
     onUpdate: ({ editor }) => {
+      if (currentUserRole !== 'HOST') return;
       setSaveStatus("Saving...");
       // Debounce the save (simple implementation inline)
       const timeoutId = setTimeout(() => {
@@ -51,7 +55,7 @@ export default function BlockEditor({ page }: { page: Page }) {
   });
 
   const saveContent = async (html: string) => {
-    if (!user) return;
+    if (!user || currentUserRole !== 'HOST') return;
     
     // In a real robust implementation, we would parse HTML back to Block[]
     // For MVP, we'll just save a single block with the raw HTML to keep things moving.
@@ -84,9 +88,11 @@ export default function BlockEditor({ page }: { page: Page }) {
   return (
     <div className="relative">
       {/* Save Status Indicator */}
-      <div className="absolute -top-10 right-0 text-xs font-medium text-slate-500">
-        {saveStatus}
-      </div>
+      {currentUserRole === 'HOST' && (
+        <div className="absolute -top-10 right-0 text-xs font-medium text-slate-500">
+          {saveStatus}
+        </div>
+      )}
       
       <EditorContent editor={editor} />
     </div>

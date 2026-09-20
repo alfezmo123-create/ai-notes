@@ -10,7 +10,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 
 export default function NotebookTree() {
-  const { notebooks, loading } = useWorkspace();
+  const { notebooks, loading, currentUserRole } = useWorkspace();
   const { user } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState("");
@@ -44,12 +44,14 @@ export default function NotebookTree() {
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
           Notebooks
         </p>
-        <button 
-          onClick={() => setIsCreating(true)}
-          className="text-slate-500 hover:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <Plus size={14} />
-        </button>
+        {currentUserRole === 'HOST' && (
+          <button 
+            onClick={() => setIsCreating(true)}
+            className="text-slate-500 hover:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Plus size={14} />
+          </button>
+        )}
       </div>
 
       {isCreating && (
@@ -81,7 +83,7 @@ export default function NotebookTree() {
 
 function NotebookNode({ notebook }: { notebook: any }) {
   const [expanded, setExpanded] = useState(false);
-  const { sections } = useWorkspace();
+  const { sections, currentUserRole } = useWorkspace();
   const { user } = useAuth();
   const [isCreatingSection, setIsCreatingSection] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
@@ -120,12 +122,14 @@ function NotebookNode({ notebook }: { notebook: any }) {
           <span className="text-sm font-medium text-slate-200 truncate">{notebook.name}</span>
         </div>
         <div className="flex items-center opacity-0 group-hover:opacity-100">
-          <button 
-            onClick={(e) => { e.stopPropagation(); setIsCreatingSection(true); setExpanded(true); }}
-            className="p-1 text-slate-500 hover:text-slate-300"
-          >
-            <Plus size={14} />
-          </button>
+          {currentUserRole === 'HOST' && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsCreatingSection(true); setExpanded(true); }}
+              className="p-1 text-slate-500 hover:text-slate-300"
+            >
+              <Plus size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -160,7 +164,7 @@ function NotebookNode({ notebook }: { notebook: any }) {
 
 function SectionNode({ section }: { section: any }) {
   const [expanded, setExpanded] = useState(false);
-  const { pages } = useWorkspace();
+  const { pages, currentUserRole } = useWorkspace();
   const { user } = useAuth();
   const pathname = usePathname();
   const [isCreatingPage, setIsCreatingPage] = useState(false);
@@ -209,12 +213,14 @@ function SectionNode({ section }: { section: any }) {
           <span className="text-sm text-slate-300 truncate">{section.name}</span>
         </div>
         <div className="flex items-center opacity-0 group-hover:opacity-100">
-          <button 
-            onClick={(e) => { e.stopPropagation(); setIsCreatingPage(true); setExpanded(true); }}
-            className="p-1 text-slate-500 hover:text-slate-300"
-          >
-            <Plus size={14} />
-          </button>
+          {currentUserRole === 'HOST' && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsCreatingPage(true); setExpanded(true); }}
+              className="p-1 text-slate-500 hover:text-slate-300"
+            >
+              <Plus size={14} />
+            </button>
+          )}
         </div>
       </div>
 

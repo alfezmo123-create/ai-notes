@@ -11,6 +11,9 @@ interface WorkspaceContextType {
   sections: Section[];
   pages: Page[];
   loading: boolean;
+  activeWorkspaceId: string | null;
+  setActiveWorkspaceId: (id: string) => void;
+  currentUserRole: "HOST" | "VIEWER" | null;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType>({
@@ -18,6 +21,9 @@ const WorkspaceContext = createContext<WorkspaceContextType>({
   sections: [],
   pages: [],
   loading: true,
+  activeWorkspaceId: null,
+  setActiveWorkspaceId: () => {},
+  currentUserRole: null,
 });
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
@@ -26,24 +32,39 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const [sections, setSections] = useState<Section[]>([]);
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // For this MVP, we assume the user has exactly one default workspace.
-  // We'll use the user's ID as their primary workspaceId for simplicity.
-  // In a full production build, we'd fetch workspaces first.
-  const workspaceId = user?.uid;
+  
+  // By default, the user's own workspace is active
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<"HOST" | "VIEWER" | null>(null);
 
   useEffect(() => {
-    if (!workspaceId) {
+    if (user && !activeWorkspaceId) {
+      setActiveWorkspaceId(user.uid);
+    }
+  }, [user, activeWorkspaceId]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId || !user) {
       setNotebooks([]);
       setSections([]);
       setPages([]);
+      setCurrentUserRole(null);
       setLoading(false);
       return;
     }
 
+    // Determine Role
+    if (activeWorkspaceId === user.uid) {
+      setCurrentUserRole("HOST");
+    } else {
+      // For shared workspaces, fetch role
+      // This is a simple implementation; in production, you'd use a real-time listener or token claims
+      setCurrentUserRole("VIEWER"); 
+    }
+
     // Subscriptions
     const notebooksRef = collection(db, "notebooks");
-    const qNotebooks = query(notebooksRef, where("workspaceId", "==", workspaceId), orderBy("order", "asc"));
+    const qNotebooks = query(notebooksRef, where("workspaceId", "==", activeWorkspaceId), orderBy("order", "asc"));
     const unsubNotebooks = onSnapshot(qNotebooks, (snapshot) => {
       setNotebooks(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Notebook)));
     });
@@ -55,7 +76,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const pagesRef = collection(db, "pages");
-    const qPages = query(pagesRef, where("workspaceId", "==", workspaceId), orderBy("order", "asc"));
+    const qPages = query(pagesRef, where("workspaceId", "==", activeWorkspaceId), orderBy("order", "asc"));
     const unsubPages = onSnapshot(qPages, (snapshot) => {
       setPages(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Page)));
     });
@@ -67,10 +88,10 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
       unsubSections();
       unsubPages();
     };
-  }, [workspaceId]);
+  }, [activeWorkspaceId, user]);
 
   return (
-    <WorkspaceContext.Provider value={{ notebooks, sections, pages, loading }}>
+    <WorkspaceContext.Provider value={{ notebooks, sections, pages, loading, activeWorkspaceId, setActiveWorkspaceId, currentUserRole }}>
       {children}
     </WorkspaceContext.Provider>
   );
