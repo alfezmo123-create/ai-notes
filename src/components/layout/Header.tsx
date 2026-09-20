@@ -1,19 +1,39 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 import { Share, Zap, Search } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
   const { user } = useAuth();
+  const { notebooks, sections, pages } = useWorkspace();
+  const pathname = usePathname();
+
+  // Parse URL: /w/n/[notebookId]/s/[sectionId]/p/[pageId]
+  const match = pathname.match(/\/w\/n\/([^\/]+)\/s\/([^\/]+)\/p\/([^\/]+)/);
+  const notebookId = match ? match[1] : null;
+  const sectionId = match ? match[2] : null;
+  const pageId = match ? match[3] : null;
+
+  const currentNotebook = notebooks.find(n => n.id === notebookId);
+  const currentSection = sections.find(s => s.id === sectionId);
+  const currentPage = pages.find(p => p.id === pageId);
 
   return (
     <header className="h-14 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-10">
       <div className="flex items-center text-sm text-slate-400">
-        <span className="hover:text-slate-200 cursor-pointer transition-colors">BCA</span>
-        <span className="mx-2">/</span>
-        <span className="hover:text-slate-200 cursor-pointer transition-colors">Operating Systems</span>
-        <span className="mx-2">/</span>
-        <span className="text-slate-200 font-medium">CPU Scheduling</span>
+        {currentNotebook ? (
+          <>
+            <span className="hover:text-slate-200 cursor-pointer transition-colors">{currentNotebook.name}</span>
+            <span className="mx-2">/</span>
+            <span className="hover:text-slate-200 cursor-pointer transition-colors">{currentSection?.name || "..."}</span>
+            <span className="mx-2">/</span>
+            <span className="text-slate-200 font-medium">{currentPage?.title || "..."}</span>
+          </>
+        ) : (
+          <span className="text-slate-200 font-medium">Workspace</span>
+        )}
       </div>
 
       <div className="flex items-center space-x-3">

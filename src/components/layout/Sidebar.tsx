@@ -15,6 +15,7 @@ import {
 import { auth } from "@/lib/firebase/config";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import NotebookTree from "./NotebookTree";
 
 export default function Sidebar() {
   const { user } = useAuth();
@@ -41,17 +42,7 @@ export default function Sidebar() {
         <SidebarItem icon={<Clock size={18} />} label="Recent" href="/w/recent" />
         <SidebarItem icon={<Search size={18} />} label="Search" href="/w/search" />
 
-        <div className="pt-6 pb-2">
-          <p className="px-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Notebooks
-          </p>
-        </div>
-        
-        {/* Placeholder Notebooks */}
-        <div className="space-y-0.5">
-          <SidebarItem label="BCA" href="/w/n/bca" indent />
-          <SidebarItem label="Projects" href="/w/n/projects" indent />
-        </div>
+        <NotebookTree />
       </nav>
 
       <div className="p-3 border-t border-slate-800 space-y-1">
