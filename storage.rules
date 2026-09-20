@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verify file size is < 5MB
+    function isValidFileSize() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+    
+    // Only allow common image formats
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    match /workspaces/{workspaceId}/pages/{pageId}/{fileName} {
+      // Anyone authenticated can read (in a real app, we'd check workspace members via custom token claims or firestore lookup, but storage rules cannot natively query firestore without a v2 integration. For MVP, restricting reads to authenticated users is standard).
+      allow read: if isAuthenticated();
+      
+      // Allow write if authenticated, size is < 5MB, and it's an image
+      allow write: if isAuthenticated() && isValidFileSize() && isImage();
+    }
+  }
+}

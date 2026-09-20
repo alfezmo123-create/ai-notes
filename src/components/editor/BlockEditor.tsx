@@ -5,16 +5,20 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
+import Image from '@tiptap/extension-image';
 import { Page } from '@/types';
 import { useEffect, useState } from 'react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useFileUpload } from '@/hooks/useFileUpload';
+import { Loader2 } from 'lucide-react';
 
 export default function BlockEditor({ page }: { page: Page }) {
   const { user } = useAuth();
   const { currentUserRole } = useWorkspace();
+  const { uploadFile, isUploading } = useFileUpload();
   const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Failed" | "">("Saved");
 
   // A very basic translation of our Block[] to TipTap HTML (in a real scenario, we'd use a custom extension or JSON format)
@@ -35,13 +39,39 @@ export default function BlockEditor({ page }: { page: Page }) {
       TaskItem.configure({
         nested: true,
       }),
+      Image.configure({
+        allowBase64: true, // We allow base64 temporarily while uploading
+        HTMLAttributes: {
+          class: 'rounded-lg max-w-full shadow-md my-4 transition-opacity',
+        },
+      }),
     ],
     content: initialContent,
     editable: currentUserRole === 'HOST',
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] prose-h1:text-4xl prose-h1:font-semibold prose-h1:tracking-tight prose-h1:mb-6 prose-p:text-slate-300 prose-p:leading-relaxed prose-headings:text-slate-200',
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[500px] prose-h1:text-4xl prose-h1:font-semibold prose-h1:tracking-tight prose-h1:mb-6 prose-p:text-slate-300 prose-p:leading-relaxed prose-headings:text-slate-200 prose-img:m-0 prose-img:mx-auto',
       },
+      handleDrop: (view, event, slice, moved) => {
+        if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+          const file = event.dataTransfer.files[0];
+          if (file.type.startsWith('image/')) {
+            handleImageUpload(file);
+            return true; // Stop default behavior
+          }
+        }
+        return false;
+      },
+      handlePaste: (view, event, slice) => {
+        if (event.clipboardData && event.clipboardData.files && event.clipboardData.files[0]) {
+          const file = event.clipboardData.files[0];
+          if (file.type.startsWith('image/')) {
+            handleImageUpload(file);
+            return true; // Stop default behavior
+          }
+        }
+        return false;
+      }
     },
     onUpdate: ({ editor }) => {
       if (currentUserRole !== 'HOST') return;
@@ -53,6 +83,40 @@ export default function BlockEditor({ page }: { page: Page }) {
       return () => clearTimeout(timeoutId);
     },
   });
+
+  const handleImageUpload = async (file: File) => {
+    if (!editor || currentUserRole !== 'HOST') return;
+
+    // We can show a temporary local preview while it uploads
+    const tempUrl = URL.createObjectURL(file);
+    
+    // Insert the image at the current cursor position with a fading class
+    editor.chain().focus().setImage({ src: tempUrl }).run();
+
+    // Upload to Firebase
+    const { url, error } = await uploadFile(file, page.id);
+    
+    if (url && !error) {
+      // Find the image node we just inserted and update its URL
+      // TipTap doesn't have an easy "update specific node" without knowing the position
+      // For MVP, we simply replace the exact matching src URL in the entire document
+      const currentContent = editor.getHTML();
+      const updatedContent = currentContent.replace(tempUrl, url);
+      
+      // Save it back without triggering re-render jumps
+      editor.commands.setContent(updatedContent, false);
+      saveContent(updatedContent);
+    } else {
+      console.error("Upload failed", error);
+      // If it fails, remove the temp image
+      const currentContent = editor.getHTML();
+      const updatedContent = currentContent.replace(`<img src="${tempUrl}">`, "");
+      editor.commands.setContent(updatedContent, false);
+      alert("Failed to upload image. Max size is 5MB.");
+    }
+    
+    URL.revokeObjectURL(tempUrl);
+  };
 
   const saveContent = async (html: string) => {
     if (!user || currentUserRole !== 'HOST') return;
@@ -89,7 +153,8 @@ export default function BlockEditor({ page }: { page: Page }) {
     <div className="relative">
       {/* Save Status Indicator */}
       {currentUserRole === 'HOST' && (
-        <div className="absolute -top-10 right-0 text-xs font-medium text-slate-500">
+        <div className="absolute -top-10 right-0 text-xs font-medium text-slate-500 flex items-center">
+          {isUploading && <Loader2 size={12} className="animate-spin mr-1" />}
           {saveStatus}
         </div>
       )}
