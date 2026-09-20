@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function BlockEditor({ page }: { page: Page }) {
   const { user } = useAuth();
-  const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "">("Saved");
+  const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Failed" | "">("Saved");
 
   // A very basic translation of our Block[] to TipTap HTML (in a real scenario, we'd use a custom extension or JSON format)
   // For this MVP, we'll store the content as HTML to leverage TipTap easily, while maintaining our DB schema conceptually.
