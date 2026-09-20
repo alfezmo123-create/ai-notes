@@ -20,6 +20,7 @@ export default function BlockEditor({ page }: { page: Page }) {
   const { currentUserRole } = useWorkspace();
   const { uploadFile, isUploading } = useFileUpload();
   const [saveStatus, setSaveStatus] = useState<"Saved" | "Saving..." | "Failed" | "">("Saved");
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
 
   // A very basic translation of our Block[] to TipTap HTML (in a real scenario, we'd use a custom extension or JSON format)
   // For this MVP, we'll store the content as HTML to leverage TipTap easily, while maintaining our DB schema conceptually.
@@ -149,12 +150,58 @@ export default function BlockEditor({ page }: { page: Page }) {
     }
   }, [page.id, editor]);
 
+  useEffect(() => {
+    const handleAiProcess = async () => {
+      if (!editor || currentUserRole !== 'HOST' || isAiProcessing) return;
+
+      const html = editor.getHTML();
+      // Simple regex to find the first image src
+      const match = html.match(/<img[^>]+src="([^">]+)"/);
+      
+      if (!match || !match[1]) {
+        alert("Please upload at least one image first to process with AI.");
+        return;
+      }
+
+      setIsAiProcessing(true);
+      setSaveStatus("AI Processing...");
+
+      try {
+        const res = await fetch('/api/ai/process-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl: match[1] })
+        });
+        
+        const data = await res.json();
+        
+        if (data.error) throw new Error(data.error);
+
+        // Strip markdown backticks if Gemini accidentally wrapped the HTML
+        let cleanHtml = data.result.replace(/```html/g, '').replace(/```/g, '').trim();
+
+        // Insert the AI result at the end of the document
+        editor.chain().focus().insertContent(`<hr><div class="ai-generated">${cleanHtml}</div>`).run();
+        saveContent(editor.getHTML());
+      } catch (err: any) {
+        console.error("AI processing failed", err);
+        alert(`AI processing failed: ${err.message}`);
+        setSaveStatus("Failed");
+      } finally {
+        setIsAiProcessing(false);
+      }
+    };
+
+    window.addEventListener('ai-process-page', handleAiProcess);
+    return () => window.removeEventListener('ai-process-page', handleAiProcess);
+  }, [editor, currentUserRole, isAiProcessing]);
+
   return (
     <div className="relative">
       {/* Save Status Indicator */}
       {currentUserRole === 'HOST' && (
         <div className="absolute -top-10 right-0 text-xs font-medium text-slate-500 flex items-center">
-          {isUploading && <Loader2 size={12} className="animate-spin mr-1" />}
+          {(isUploading || isAiProcessing) && <Loader2 size={12} className="animate-spin mr-1" />}
           {saveStatus}
         </div>
       )}

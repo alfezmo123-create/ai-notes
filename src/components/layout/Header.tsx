@@ -20,6 +20,10 @@ export default function Header() {
   const currentSection = sections.find(s => s.id === sectionId);
   const currentPage = pages.find(p => p.id === pageId);
 
+  const handleAiProcess = () => {
+    window.dispatchEvent(new CustomEvent('ai-process-page'));
+  };
+
   return (
     <header className="h-14 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-10">
       <div className="flex items-center text-sm text-slate-400">
@@ -53,7 +57,10 @@ export default function Header() {
           Share
         </button>
         {currentUserRole === 'HOST' && (
-          <button className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 rounded-md transition-colors text-sm font-medium">
+          <button 
+            onClick={handleAiProcess}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 rounded-md transition-colors text-sm font-medium"
+          >
             <Zap size={14} />
             <span>AI Process</span>
           </button>
