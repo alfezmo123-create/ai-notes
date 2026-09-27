@@ -189,7 +189,7 @@ export default function SectionPage({
                 <span className="text-sm font-medium text-slate-300 truncate pr-2">{file.displayName}</span>
                 
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                  <DropdownMenuTrigger>
                     <button className="text-slate-500 hover:text-slate-300 p-1">
                       <MoreVertical size={16} />
                     </button>

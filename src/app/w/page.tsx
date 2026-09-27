@@ -19,7 +19,9 @@ export default function WorkspaceHome() {
 
   // Get recent 6 files
   const recentFiles = [...files].sort((a, b) => {
-    return (b.uploadedAt?.toMillis() || 0) - (a.uploadedAt?.toMillis() || 0);
+    const aTime = a.uploadedAt && typeof (a.uploadedAt as any).toMillis === 'function' ? (a.uploadedAt as any).toMillis() : 0;
+    const bTime = b.uploadedAt && typeof (b.uploadedAt as any).toMillis === 'function' ? (b.uploadedAt as any).toMillis() : 0;
+    return bTime - aTime;
   }).slice(0, 6);
 
   return (

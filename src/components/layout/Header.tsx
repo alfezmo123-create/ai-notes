@@ -7,22 +7,16 @@ import { usePathname } from "next/navigation";
 
 export default function Header() {
   const { user } = useAuth();
-  const { notebooks, sections, pages, currentUserRole } = useWorkspace();
+  const { notebooks, sections, currentUserRole } = useWorkspace();
   const pathname = usePathname();
 
-  // Parse URL: /w/n/[notebookId]/s/[sectionId]/p/[pageId]
-  const match = pathname.match(/\/w\/n\/([^\/]+)\/s\/([^\/]+)\/p\/([^\/]+)/);
+  // Parse URL: /w/n/[notebookId]/s/[sectionId]
+  const match = pathname.match(/\/w\/n\/([^\/]+)\/s\/([^\/]+)/);
   const notebookId = match ? match[1] : null;
   const sectionId = match ? match[2] : null;
-  const pageId = match ? match[3] : null;
 
   const currentNotebook = notebooks.find(n => n.id === notebookId);
   const currentSection = sections.find(s => s.id === sectionId);
-  const currentPage = pages.find(p => p.id === pageId);
-
-  const handleAiProcess = () => {
-    window.dispatchEvent(new CustomEvent('ai-process-page'));
-  };
 
   return (
     <header className="h-14 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex items-center justify-between px-4 sticky top-0 z-10">
@@ -31,9 +25,7 @@ export default function Header() {
           <>
             <span className="hover:text-slate-200 cursor-pointer transition-colors">{currentNotebook.name}</span>
             <span className="mx-2">/</span>
-            <span className="hover:text-slate-200 cursor-pointer transition-colors">{currentSection?.name || "..."}</span>
-            <span className="mx-2">/</span>
-            <span className="text-slate-200 font-medium">{currentPage?.title || "..."}</span>
+            <span className="text-slate-200 font-medium">{currentSection?.name || "..."}</span>
             {currentUserRole === 'VIEWER' && (
               <span className="ml-4 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-slate-800 text-slate-400 uppercase">
                 Read Only
@@ -56,13 +48,12 @@ export default function Header() {
           <Share size={16} className="mr-2" />
           Share
         </button>
-        {currentUserRole === 'HOST' && (
+        {currentUserRole === 'OWNER' && (
           <button 
-            onClick={handleAiProcess}
             className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 rounded-md transition-colors text-sm font-medium"
           >
             <Zap size={14} />
-            <span>AI Process</span>
+            <span>AI Search</span>
           </button>
         )}
         

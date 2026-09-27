@@ -10,7 +10,7 @@ import { Trash2, UserPlus, Shield } from "lucide-react";
 interface WorkspaceMember {
   id: string;
   email: string;
-  role: "HOST" | "VIEWER";
+  role: "OWNER" | "CONTRIBUTOR" | "VIEWER";
   workspaceId: string;
 }
 
@@ -68,7 +68,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (currentUserRole !== "HOST") {
+  if (currentUserRole !== "OWNER") {
     return (
       <div className="p-8 max-w-4xl mx-auto">
         <h1 className="text-2xl font-semibold mb-6">Workspace Settings</h1>
@@ -125,7 +125,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="flex items-center text-blue-400 bg-blue-400/10 px-2 py-1 rounded text-xs font-medium">
-                <Shield size={14} className="mr-1" /> HOST
+                <Shield size={14} className="mr-1" /> OWNER
               </div>
             </div>
 
