@@ -8,7 +8,6 @@ import {
   Star, 
   Clock, 
   Search, 
-  Book, 
   Plus, 
   User, 
   LogOut,

@@ -44,7 +44,7 @@ export default function NotebookTree() {
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
           Notebooks
         </p>
-        {currentUserRole === 'HOST' && (
+        {currentUserRole === 'OWNER' && (
           <button 
             onClick={() => setIsCreating(true)}
             className="text-slate-500 hover:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -122,7 +122,7 @@ function NotebookNode({ notebook }: { notebook: any }) {
           <span className="text-sm font-medium text-slate-200 truncate">{notebook.name}</span>
         </div>
         <div className="flex items-center opacity-0 group-hover:opacity-100">
-          {currentUserRole === 'HOST' && (
+          {currentUserRole === 'OWNER' && (
             <button 
               onClick={(e) => { e.stopPropagation(); setIsCreatingSection(true); setExpanded(true); }}
               className="p-1 text-slate-500 hover:text-slate-300"
@@ -163,105 +163,23 @@ function NotebookNode({ notebook }: { notebook: any }) {
 }
 
 function SectionNode({ section }: { section: any }) {
-  const [expanded, setExpanded] = useState(false);
-  const { pages, currentUserRole } = useWorkspace();
+  const { currentUserRole } = useWorkspace();
   const { user } = useAuth();
   const pathname = usePathname();
-  const [isCreatingPage, setIsCreatingPage] = useState(false);
-  const [newPageTitle, setNewPageTitle] = useState("");
 
-  const sectionPages = pages.filter((p) => p.sectionId === section.id);
-
-  const handleCreatePage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPageTitle.trim() || !user) return;
-
-    try {
-      await addDoc(collection(db, "pages"), {
-        workspaceId: user.uid,
-        sectionId: section.id,
-        title: newPageTitle,
-        blocks: [
-          {
-            id: crypto.randomUUID(),
-            type: 'heading_1',
-            content: newPageTitle
-          }
-        ],
-        version: 1,
-        order: sectionPages.length,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastEditedBy: user.uid,
-      });
-      setNewPageTitle("");
-      setIsCreatingPage(false);
-      setExpanded(true);
-    } catch (error) {
-      console.error("Error creating page:", error);
-    }
-  };
+  const sectionUrl = `/w/n/${section.notebookId}/s/${section.id}`;
+  const isActive = pathname === sectionUrl || pathname.startsWith(sectionUrl + '/');
 
   return (
     <div className="flex flex-col">
-      <div className="group flex items-center justify-between py-1.5 hover:bg-slate-800/50 rounded-lg pr-2 cursor-pointer">
-        <div className="flex items-center flex-1 overflow-hidden" onClick={() => setExpanded(!expanded)}>
-          <button className="p-0.5 text-slate-500 hover:text-slate-300">
-            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </button>
-          <Folder size={14} className="mx-2 text-blue-400/70 flex-shrink-0" />
-          <span className="text-sm text-slate-300 truncate">{section.name}</span>
+      <Link href={sectionUrl}>
+        <div className={`group flex items-center justify-between py-1.5 hover:bg-slate-800/50 rounded-lg pr-2 cursor-pointer ${isActive ? 'bg-blue-600/10' : ''}`}>
+          <div className="flex items-center flex-1 overflow-hidden">
+            <Folder size={14} className={`mx-2 flex-shrink-0 ${isActive ? 'text-blue-400' : 'text-blue-400/70'}`} />
+            <span className={`text-sm truncate ${isActive ? 'text-blue-400 font-medium' : 'text-slate-300'}`}>{section.name}</span>
+          </div>
         </div>
-        <div className="flex items-center opacity-0 group-hover:opacity-100">
-          {currentUserRole === 'HOST' && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); setIsCreatingPage(true); setExpanded(true); }}
-              className="p-1 text-slate-500 hover:text-slate-300"
-            >
-              <Plus size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="pl-6 flex flex-col space-y-0.5 mt-0.5">
-          {sectionPages.map((page) => {
-            const pageUrl = `/w/n/${section.notebookId}/s/${section.id}/p/${page.id}`;
-            const isActive = pathname === pageUrl;
-            return (
-              <Link
-                key={page.id}
-                href={pageUrl}
-                className={`group flex items-center py-1.5 pr-2 rounded-lg transition-colors ${
-                  isActive ? "bg-blue-600/10 text-blue-400" : "hover:bg-slate-800/50 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <FileText size={14} className="mx-2 flex-shrink-0 opacity-70" />
-                <span className="text-sm truncate">{page.title}</span>
-              </Link>
-            );
-          })}
-          
-          {isCreatingPage && (
-            <form onSubmit={handleCreatePage} className="pr-2 py-1">
-              <input
-                type="text"
-                autoFocus
-                value={newPageTitle}
-                onChange={(e) => setNewPageTitle(e.target.value)}
-                onBlur={() => setIsCreatingPage(false)}
-                placeholder="Page title..."
-                className="w-full bg-slate-800 text-sm border border-slate-700 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-500"
-              />
-            </form>
-          )}
-
-          {sectionPages.length === 0 && !isCreatingPage && (
-            <div className="pl-6 py-1 text-xs text-slate-500">No pages</div>
-          )}
-        </div>
-      )}
+      </Link>
     </div>
   );
 }

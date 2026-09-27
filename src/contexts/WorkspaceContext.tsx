@@ -4,22 +4,22 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/hooks/useAuth";
-import { Notebook, Section, Page } from "@/types";
+import { Notebook, Section, UploadedFile, Role } from "@/types";
 
 interface WorkspaceContextType {
   notebooks: Notebook[];
   sections: Section[];
-  pages: Page[];
+  files: UploadedFile[];
   loading: boolean;
   activeWorkspaceId: string | null;
   setActiveWorkspaceId: (id: string) => void;
-  currentUserRole: "HOST" | "VIEWER" | null;
+  currentUserRole: Role | null;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType>({
   notebooks: [],
   sections: [],
-  pages: [],
+  files: [],
   loading: true,
   activeWorkspaceId: null,
   setActiveWorkspaceId: () => {},
@@ -30,12 +30,12 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
-  const [pages, setPages] = useState<Page[]>([]);
+  const [files, setFiles] = useState<UploadedFile[]>([]);
   const [loading, setLoading] = useState(true);
   
   // By default, the user's own workspace is active
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<"HOST" | "VIEWER" | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
 
   useEffect(() => {
     if (user && !activeWorkspaceId) {
@@ -47,7 +47,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     if (!activeWorkspaceId || !user) {
       setNotebooks([]);
       setSections([]);
-      setPages([]);
+      setFiles([]);
       setCurrentUserRole(null);
       setLoading(false);
       return;
@@ -55,7 +55,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
     // Determine Role
     if (activeWorkspaceId === user.uid) {
-      setCurrentUserRole("HOST");
+      setCurrentUserRole("OWNER");
     } else {
       // For shared workspaces, fetch role
       // This is a simple implementation; in production, you'd use a real-time listener or token claims
@@ -70,15 +70,15 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const sectionsRef = collection(db, "sections");
-    const qSections = query(sectionsRef, where("workspaceId", "==", workspaceId), orderBy("order", "asc"));
+    const qSections = query(sectionsRef, where("workspaceId", "==", activeWorkspaceId), orderBy("order", "asc"));
     const unsubSections = onSnapshot(qSections, (snapshot) => {
       setSections(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Section)));
     });
 
-    const pagesRef = collection(db, "pages");
-    const qPages = query(pagesRef, where("workspaceId", "==", activeWorkspaceId), orderBy("order", "asc"));
-    const unsubPages = onSnapshot(qPages, (snapshot) => {
-      setPages(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Page)));
+    const filesRef = collection(db, "files");
+    const qFiles = query(filesRef, where("workspaceId", "==", activeWorkspaceId), orderBy("order", "asc"));
+    const unsubFiles = onSnapshot(qFiles, (snapshot) => {
+      setFiles(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as UploadedFile)));
     });
 
     setLoading(false);
@@ -86,15 +86,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       unsubNotebooks();
       unsubSections();
-      unsubPages();
+      unsubFiles();
     };
   }, [activeWorkspaceId, user]);
 
   return (
-    <WorkspaceContext.Provider value={{ notebooks, sections, pages, loading, activeWorkspaceId, setActiveWorkspaceId, currentUserRole }}>
+    <WorkspaceContext.Provider value={{ notebooks, sections, files, loading, activeWorkspaceId, setActiveWorkspaceId, currentUserRole }}>
       {children}
     </WorkspaceContext.Provider>
   );
 };
 
 export const useWorkspace = () => useContext(WorkspaceContext);
+
