@@ -63,31 +63,35 @@ export default function SectionPage({
 
     for (let i = 0; i < selectedFiles.length; i++) {
       let file = selectedFiles[i];
+      const originalFileName = file.name;
+      
       if (!file.type.startsWith('image/')) {
-        toast.error(`File ${file.name} is not an image.`);
+        toast.error(`File ${originalFileName} is not an image.`);
         continue;
       }
       if (file.size > 15 * 1024 * 1024) {
-        toast.error(`File ${file.name} is too large (max 15MB before compression).`);
+        toast.error(`File ${originalFileName} is too large (max 15MB before compression).`);
         continue;
       }
 
       const localUrl = URL.createObjectURL(file);
       setUploadProgress(prev => ({ 
         ...prev, 
-        [file.name]: { name: file.name, progress: 0, localUrl } 
+        [originalFileName]: { name: originalFileName, progress: 0, localUrl } 
       }));
 
       try {
-        // Compress the image before upload for extreme speed and lower costs
+        // Compress the image before upload — keep well under the 10MB storage rule
         const options = {
-          maxSizeMB: 1,
+          maxSizeMB: 2,
           maxWidthOrHeight: 1920,
-          useWebWorker: true
+          useWebWorker: true,
+          initialQuality: 0.85,
         };
         file = await imageCompression(file, options);
       } catch (error) {
         console.error("Compression error", error);
+        // Continue with original file if compression fails
       }
 
       const fileId = crypto.randomUUID();
@@ -99,15 +103,24 @@ export default function SectionPage({
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           setUploadProgress(prev => ({ 
             ...prev, 
-            [file.name]: { ...prev[file.name], progress } 
+            [originalFileName]: { ...prev[originalFileName], progress } 
           }));
         },
-        (error) => {
+        (error: { code?: string; message?: string }) => {
           console.error("Upload failed", error);
-          toast.error(`Failed to upload ${file.name}`);
+          const code = error?.code ?? '';
+          let msg = `Failed to upload ${originalFileName}`;
+          if (code === 'storage/unauthorized') msg += ' — permission denied (check storage rules)';
+          else if (code === 'storage/canceled') msg += ' — upload was cancelled';
+          else if (code === 'storage/quota-exceeded') msg += ' — storage quota exceeded';
+          else if (code) msg += ` (${code})`;
+          toast.error(msg);
           setUploadProgress(prev => {
             const next = { ...prev };
-            delete next[file.name];
+            if (next[originalFileName]) {
+              URL.revokeObjectURL(next[originalFileName].localUrl);
+              delete next[originalFileName];
+            }
             return next;
           });
         },
@@ -119,8 +132,8 @@ export default function SectionPage({
             notebookId,
             sectionId,
             storagePath: storageRef.fullPath,
-            originalName: file.name,
-            displayName: file.name,
+            originalName: originalFileName,
+            displayName: originalFileName,
             mimeType: file.type,
             size: file.size,
             uploadedBy: user.uid,
@@ -130,11 +143,13 @@ export default function SectionPage({
           });
           
           successCount++;
-          toast.success(`Uploaded ${file.name}`);
+          toast.success(`Uploaded ${originalFileName}`);
           setUploadProgress(prev => {
             const next = { ...prev };
-            URL.revokeObjectURL(next[file.name].localUrl); // Free memory
-            delete next[file.name];
+            if (next[originalFileName]) {
+              URL.revokeObjectURL(next[originalFileName].localUrl); // Free memory
+              delete next[originalFileName];
+            }
             return next;
           });
         }

@@ -7,9 +7,9 @@ service firebase.storage {
       return request.auth != null;
     }
     
-    // Verify file size is < 5MB
+    // Verify file size is < 10MB (compressed images can still be several MB)
     function isValidFileSize() {
-      return request.resource.size < 5 * 1024 * 1024;
+      return request.resource.size < 10 * 1024 * 1024;
     }
     
     // Only allow common image formats
